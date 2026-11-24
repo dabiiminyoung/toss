@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>사방넷 엑셀 변환 도우미</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #f5f7fb; color: #17233b;
+    font: 14px/1.6 system-ui, sans-serif;
+  }
+  main { max-width: 1440px; margin: auto; padding: 32px 24px; }
+  h1 { margin: 0; font-size: 27px; }
+  h2 { margin: 0 0 16px; font-size: 18px; }
+  p { color: #64748b; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 16px; padding: 22px; margin-bottom: 20px;
+    min-width: 0;
+  }
+  .tag {
+    display: inline-block; border-radius: 8px; padding: 3px 10px;
+    background: #edf2ff; color: #3659d9; font-weight: 700;
+  }
+  input, select, button {
+    font: inherit; border-radius: 8px; padding: 9px 12px;
+    border: 1px solid #cbd5e1; background: white;
+  }
+  input[type=file] { width: 100%; margin: 8px 0 14px; }
+  input[type=number] { width: 80px; }
+  label { display: inline-block; margin: 4px 12px 4px 0; }
+  button { cursor: pointer; font-weight: 600; }
+  button:hover { background: #f1f5f9; }
+  button.primary { background: #375ce5; color: white; border: none; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .rule { display: flex; gap: 12px; align-items: center; margin: 12px 0; }
+  .rule select { flex: 1; min-width: 0; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .table-wrap { overflow: auto; max-height: 470px; }
+  table { border-collapse: collapse; width: 100%; white-space: nowrap; }
+  th, td { border-bottom: 1px solid #e2e8f0; padding: 10px 14px; text-align: left; }
+  th { background: #f1f5f9; position: sticky; top: 0; z-index: 1; }
+  #status {
+    padding: 12px 16px; background: #eef2ff;
+    border-radius: 10px; margin-bottom: 20px; white-space: pre-wrap;
+  }
+  .small { font-size: 12px; color: #64748b; }
+  @media (max-width: 800px) {
+    .grid { grid-template-columns: 1fr; }
+    main { padding: 20px 12px; }
+    .rule { flex-wrap: wrap; }
+    .rule select { flex-basis: 40%; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <span class="tag">사방넷 업무 도우미</span>
+  <h1>A → B 엑셀 변환</h1>
+  <p>열을 연결하고 결과를 확인한 뒤 B파일을 다운로드하세요.</p>
+
+  <div class="grid">
+    <section class="card">
+      <h2>① A 원본 파일</h2>
+      <input id="fileA" type="file" accept=".xlsx">
+      <label>제목 행 <input id="headerA" type="number" min="1" value="2"></label>
+      <label>데이터 시작 행 <input id="startA" type="number" min="1" value="4"></label>
+      <p id="infoA" class="small">첫 번째 시트를 사용합니다.</p>
+    </section>
+    <section class="card">
+      <h2>② B 양식 파일</h2>
+      <input id="fileB" type="file" accept=".xlsx">
+      <label>제목 행 <input id="headerB" type="number" min="1" value="2"></label>
+      <label>데이터 시작 행 <input id="startB" type="number" min="1" value="4"></label>
+      <p id="infoB" class="small">제목·안내 영역은 유지하고 데이터 영역을 새로 작성합니다.</p>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>③ 열 연결 규칙</h2>
+    <p class="small">왼쪽은 A의 가져올 열, 오른쪽은 B의 입력할 열입니다.</p>
+    <div id="rules">두 파일을 먼저 업로드해 주세요.</div>
+    <div class="actions">
+      <button id="add" disabled>＋ 열 연결 추가</button>
+      <button id="preview" disabled>미리보기 갱신</button>
+      <button id="download" class="primary" disabled>B 엑셀 다운로드</button>
+    </div>
+    <p class="small">
+      B의 데이터 시작 행 이후 기존 셀 값은 지우고 연결한 열만 채웁니다.
+      연결하지 않은 열은 빈칸으로 남습니다.
+    </p>
+  </section>
+
+  <div id="status" role="status">A파일과 B양식을 선택하세요.</div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>④ A 원본 미리보기</h2>
+      <div id="tableA" class="table-wrap"></div>
+    </section>
+    <section class="card">
+      <h2>⑤ B 결과 미리보기</h2>
+      <div id="tableB" class="table-wrap"></div>
+    </section>
+  </div>
+
+  <p class="small">
+    미리보기는 최대 100행, 다운로드는 전체 데이터를 포함합니다.
+    이 버전은 값 중심 변환이며 원본의 서식·이미지·매크로 등은 완전히 보존되지 않을 수 있습니다.
+    엑셀 처리 라이브러리를 불러오려면 인터넷 연결이 필요합니다.
+  </p>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const state = { A: null, B: null };
+let mappings = [];
+
+const normalize = value => String(value ?? "").replace(/\s/g, "");
+const message = text => $("status").textContent = text;
+
+function headers(side) {
+  const row = Number($("header" + side).value) - 1;
+  return state[side]?.rows[row] || [];
+}
+
+function ready() {
+  return Boolean(state.A && state.B);
+}
+
+function validateRows() {
+  for (const side of ["A", "B"]) {
+    const h = Number($("header" + side).value);
+    const s = Number($("start" + side).value);
+    if (!Number.isInteger(h) || !Number.isInteger(s) || h < 1 || s <= h) {
+      throw new Error(side + "의 데이터 시작 행은 제목 행보다 뒤여야 합니다.");
+    }
+    if (!headers(side).some(v => String(v).trim())) {
+      throw new Error(side + "의 제목 행을 확인해 주세요.");
+    }
+  }
+}
+
+function defaultMapping() {
+  const a = headers("A").findIndex(v => normalize(v).includes("품번코드"));
+  const b = headers("B").findIndex(v => normalize(v).includes("품번코드"));
+  mappings = a >= 0 && b >= 0 ? [{ a, b }] : [];
+}
+
+function selectFor(side, selected, onChange) {
+  const select = document.createElement("select");
+  headers(side).forEach((name, index) => {
+    if (!String(name).trim()) return;
+    const option = document.createElement("option");
+    option.value = index;
+    option.textContent =
+      XLSX.utils.encode_col(index) + "열 · " + String(name).replace(/\n/g, " ");
+    select.appendChild(option);
+  });
+  select.value = selected;
+  select.onchange = () => {
+    onChange(Number(select.value));
+    preview();
+  };
+  return select;
+}
+
+function renderRules() {
+  $("rules").replaceChildren();
+  mappings.forEach((mapping, index) => {
+    const row = document.createElement("div");
+    row.className = "rule";
+    const arrow = document.createElement("span");
+    arrow.textContent = "→";
+    const remove = document.createElement("button");
+    remove.textContent = "삭제";
+    remove.onclick = () => {
+      mappings.splice(index, 1);
+      renderRules();
+      preview();
+    };
+    row.append(
+      selectFor("A", mapping.a, value => mapping.a = value),
+      arrow,
+      selectFor("B", mapping.b, value => mapping.b = value),
+      remove
+    );
+    $("rules").appendChild(row);
+  });
+}
+
+function sourceRows() {
+  const product = headers("A").findIndex(v => normalize(v).includes("품번코드"));
+  if (product < 0) throw new Error("A 제목 행에서 품번코드 열을 찾지 못했습니다.");
+  const start = Number($("startA").value) - 1;
+  const candidates = state.A.rows.slice(start);
+  // 제목·설명·하단 안내를 제외하기 위해 숫자로 된 품번코드 행만 사용합니다.
+  const rows = candidates.filter(row =>
+    /^\d+$/.test(String(row[product] ?? "").trim())
+  );
+  const skipped = candidates.filter(row =>
+    row.some(v => String(v).trim()) &&
+    !/^\d+$/.test(String(row[product] ?? "").trim())
+  ).length;
+  return { rows, skipped };
+}
+
+function buildData() {
+  validateRows();
+  if (!mappings.length) throw new Error("열 연결 규칙을 하나 이상 추가하세요.");
+  if (new Set(mappings.map(m => m.b)).size !== mappings.length) {
+    throw new Error("B의 같은 열에 여러 규칙이 연결되어 있습니다. 중복을 해제하세요.");
+  }
+  const { rows, skipped } = sourceRows();
+  if (!rows.length) throw new Error("가져올 데이터가 없습니다. 제목·시작 행을 확인하세요.");
+  const output = rows.map(row => {
+    const result = Array(headers("B").length).fill("");
+    mappings.forEach(({a, b}) => result[b] = row[a] ?? "");
+    return result;
+  });
+  return { rows, output, skipped };
+}
+
+function renderTable(target, names, rows) {
+  const table = document.createElement("table");
+  const head = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  ["행", ...names].forEach(value => {
+    const th = document.createElement("th");
+    th.textContent = value;
+    headRow.appendChild(th);
+  });
+  head.appendChild(headRow);
+  const body = document.createElement("tbody");
+  rows.slice(0, 100).forEach((row, index) => {
+    const tr = document.createElement("tr");
+    [index + 1, ...names.map((_, col) => row[col] ?? "")].forEach(value => {
+      const td = document.createElement("td");
+      td.textContent = value;
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+  table.append(head, body);
+  $(target).replaceChildren(table);
+}
+
+function preview() {
+  if (!ready()) return;
+  $("download").disabled = true;
+  $("tableB").replaceChildren();
+  try {
+    const {rows, output, skipped} = buildData();
+    renderTable("tableA", headers("A"), rows);
+    renderTable("tableB", headers("B"), output);
+    const missing = headers("B").filter((name, i) =>
+      String(name).includes("[필수]") && !mappings.some(m => m.b === i)
+    );
+    message(
+      `${rows.length}행 변환 · 연결 규칙 ${mappings.length}개` +
+      (skipped ? `\n숫자 품번코드가 없는 ${skipped}행은 제외했습니다.` : "") +
+      (missing.length
+        ? "\n아직 연결하지 않은 필수 열: " + missing.join(", ").replace(/\n/g, " ") +
+          "\n현재 결과는 부분 작성본입니다. 실제 업로드 전에 나머지 필수값을 채워 주세요."
+        : "\n다운로드 전에 결과를 확인해 주세요.")
+    );
+    $("download").disabled = false;
+  } catch (error) {
+    message(error.message);
+  }
+}
+
+async function loadFile(side, file) {
+  if (!file) return;
+  state[side] = null;
+  ["add", "preview", "download"].forEach(id => $(id).disabled = true);
+  try {
+    if (!window.XLSX) throw new Error("엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결 후 새로고침하세요.");
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, {type: "array"});
+    const name = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[name];
+    const rows = XLSX.utils.sheet_to_json(sheet, {
+      header: 1, defval: "", raw: false, blankrows: true
+    });
+    const header = rows.findIndex((row, i) =>
+      i < 30 && row.some(v => normalize(v).includes("품번코드"))
+    );
+    state[side] = { buffer, rows, name };
+    if (header >= 0) {
+      $("header" + side).value = header + 1;
+      $("start" + side).value = header + 3;
+    }
+    $("info" + side).textContent =
+      `${file.name} · 첫 번째 시트: ${name} · 자동 감지된 행 번호를 확인하세요.`;
+    if (ready()) {
+      defaultMapping();
+      renderRules();
+      $("add").disabled = $("preview").disabled = false;
+      preview();
+    } else {
+      message("나머지 파일도 업로드해 주세요.");
+    }
+  } catch (error) {
+    message("파일 읽기 실패: " + error.message);
+  }
+}
+
+for (const side of ["A", "B"]) {
+  $("file" + side).onchange = event => loadFile(side, event.target.files[0]);
+  $("header" + side).onchange = () => {
+    if (!ready()) return;
+    defaultMapping();
+    renderRules();
+    preview();
+  };
+  $("start" + side).onchange = preview;
+}
+
+$("add").onclick = () => {
+  const a = headers("A").findIndex(v => String(v).trim());
+  const b = headers("B").findIndex((v, i) =>
+    String(v).trim() && !mappings.some(m => m.b === i)
+  );
+  if (a < 0 || b < 0) return message("추가로 연결할 열이 없습니다.");
+  mappings.push({a, b});
+  renderRules();
+  preview();
+};
+
+$("preview").onclick = preview;
+
+$("download").onclick = () => {
+  try {
+    const {output} = buildData();
+    const workbook = XLSX.read(state.B.buffer, {type: "array"});
+    const sheet = workbook.Sheets[state.B.name];
+    const start = Number($("startB").value) - 1;
+
+    // B의 기존 예시 데이터와 하단 안내를 제거합니다.
+    for (const key of Object.keys(sheet)) {
+      if (!key.startsWith("!") && XLSX.utils.decode_cell(key).r >= start) {
+        delete sheet[key];
+      }
+    }
+    if (sheet["!merges"]) {
+      sheet["!merges"] = sheet["!merges"].filter(range => range.e.r < start);
+    }
+
+    // 식별자의 앞자리 0을 보존하고 수량·금액 열은 숫자로 기록합니다.
+    const numericFields = new Set(["가상재고", "추가금액", "공급상태", "EA"]);
+    const data = output.map(row => row.map((value, col) => {
+      const field = normalize(headers("B")[col]).replace(/\[.*?\]/g, "");
+      if (numericFields.has(field) && value !== "") {
+        const number = Number(String(value).replace(/,/g, "").replace(/^'/, ""));
+        if (Number.isFinite(number)) return number;
+      }
+      return value === "" ? "" : String(value);
+    }));
+    sheet["!ref"] = XLSX.utils.encode_range({
+      s: {r: 0, c: 0},
+      e: {
+        r: start + data.length - 1,
+        c: Math.max(headers("B").length - 1, 0)
+      }
+    });
+    XLSX.utils.sheet_add_aoa(sheet, data, {origin: {r: start, c: 0}});
+    XLSX.writeFile(workbook, "B_변환결과.xlsx");
+    message("B_변환결과.xlsx 다운로드를 요청했습니다. 업로드 전 필수값과 서식을 확인하세요.");
+  } catch (error) {
+    message("다운로드 실패: " + error.message);
+  }
+};
+</script>
+</body>
+</html>

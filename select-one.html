@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>엑셀 옵션 변환기 — 택1</title>
+<title>엑셀 옵션 일괄 변환기 — 택1</title>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -16,11 +16,7 @@ body {
   color: #1e293b;
   font: 14px/1.7 system-ui, sans-serif;
 }
-main {
-  max-width: 1500px;
-  margin: auto;
-  padding: 32px 20px;
-}
+main { max-width: 1500px; margin: auto; padding: 30px 20px; }
 h1 { margin: 8px 0; font-size: 28px; }
 h2 { margin: 0 0 14px; font-size: 18px; }
 p { margin: 8px 0; }
@@ -34,11 +30,7 @@ p { margin: 8px 0; }
 }
 .muted { color: #64748b; }
 .small { font-size: 12px; }
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .card {
   min-width: 0;
   margin-top: 20px;
@@ -49,20 +41,16 @@ p { margin: 8px 0; }
 }
 .rules { background: #f5f3ff; border-color: #ddd6fe; }
 ul { margin-bottom: 0; padding-left: 22px; }
-input[type=file] {
+input[type=file], select {
   width: 100%;
-  padding: 14px;
-  border: 1px dashed #94a3b8;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
   border-radius: 10px;
   background: #f8fafc;
   font: inherit;
 }
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 20px;
-}
+input[type=file] { border-style: dashed; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
 button {
   padding: 12px 20px;
   border: 0;
@@ -85,27 +73,25 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 }
 #status.success { background: #dcfce7; color: #166534; }
 #status.error { background: #fee2e2; color: #991b1b; }
-.table-wrap { overflow: auto; max-height: 500px; }
-table {
-  width: 100%;
-  border-collapse: collapse;
-  white-space: nowrap;
-}
+#status.warning { background: #fef3c7; color: #92400e; }
+progress { width: 100%; height: 16px; margin-top: 16px; }
+.table-wrap { overflow: auto; max-height: 480px; }
+table { width: 100%; border-collapse: collapse; white-space: nowrap; }
 th, td {
   padding: 10px 12px;
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
 }
-th {
-  position: sticky;
-  top: 0;
-  background: #f1f5f9;
+th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; }
+#resultBody td:last-child {
+  min-width: 260px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
-footer {
-  margin-top: 24px;
-  font-size: 12px;
-  color: #64748b;
-}
+.ok { color: #15803d; font-weight: 700; }
+.fail { color: #b91c1c; font-weight: 700; }
+#previewInfo { white-space: pre-wrap; }
+footer { margin-top: 24px; font-size: 12px; color: #64748b; }
 @media (max-width: 900px) {
   .grid { grid-template-columns: 1fr; gap: 0; }
   main { padding: 20px 12px; }
@@ -116,53 +102,90 @@ footer {
 
 <body>
 <main>
-  <span class="badge">택1 버전 · 원본 행 유지 · 재고 0 포함</span>
-  <h1>엑셀 옵션 변환기 — 택1</h1>
+  <span class="badge">택1 · 원본 재고 복사 · 여러 파일 ZIP</span>
+  <h1>엑셀 옵션 일괄 변환기 — 택1</h1>
   <p class="muted">
-    옵션·재고·연결상품코드를 같은 행에 반영하고 옵션제목에 (택1)을 붙입니다.
+    A파일 여러 개와 B양식 하나로 변환하고 결과를 ZIP으로 다운로드합니다.
   </p>
 
   <section class="card rules">
-    <h2>변환 규칙</h2>
+    <h2>적용 규칙</h2>
     <ul>
-      <li>B 상단 1~3행 유지 · 행 삭제 없음</li>
+      <li>B 상단 1~3행 보존 · 행 삭제 없음</li>
       <li>A의 원본 행 번호 그대로 B에 입력</li>
       <li>A열: 품번코드 복사</li>
-      <li>B열: A 마지막 단품코드 다음 번호부터 순차 생성</li>
-      <li>
-        C열:
-        <strong>(택1) 색상:패션의류/잡화 사이즈:수량</strong>
-      </li>
+      <li>B열: 각 A파일의 마지막 단품코드 다음 번호부터 생성</li>
+      <li>C열: <strong>(택1) 색상:패션의류/잡화 사이즈:수량</strong></li>
       <li>D열: 앞항목:뒤항목 → 뒤항목:앞항목:1개</li>
       <li>E열: 같은 A 원본 행의 가상재고 복사 — 숫자 0 포함</li>
       <li>L열: A·B·C가 모두 채워진 데이터 행에 숫자 2</li>
       <li>M열: 같은 A 원본 행의 연결상품코드 복사</li>
-      <li>출력 파일명: A파일명_업로드용.xlsx</li>
+      <li>결과 파일명: A파일명_업로드용.xlsx</li>
     </ul>
   </section>
 
   <div class="grid">
     <section class="card">
-      <h2><label for="fileA">① A 원본 파일</label></h2>
-      <input id="fileA" type="file" accept=".xlsx">
-      <p id="infoA" class="small muted">파일을 선택하세요.</p>
+      <h2><label for="filesA">① A 원본 — 여러 개 선택</label></h2>
+      <input id="filesA" type="file" accept=".xlsx" multiple>
+      <p id="infoA" class="small muted">
+        Ctrl 또는 Shift로 여러 파일을 선택하세요.
+      </p>
     </section>
 
     <section class="card">
-      <h2><label for="fileB">② B 양식 파일</label></h2>
+      <h2><label for="fileB">② 공통 B양식 — 한 개 선택</label></h2>
       <input id="fileB" type="file" accept=".xlsx">
-      <p id="infoB" class="small muted">새 B양식을 선택하세요.</p>
+      <p id="infoB" class="small muted">
+        A2가 품번코드[수정불가]인 새 B양식을 선택하세요.
+      </p>
     </section>
   </div>
 
   <div class="actions">
-    <button id="convert" class="secondary">변환 및 검증</button>
-    <button id="download" disabled>업로드용 파일 다운로드</button>
+    <button id="convert" type="button" class="secondary">
+      전체 변환 및 검증
+    </button>
+    <button id="download" type="button" disabled>
+      결과 ZIP 다운로드
+    </button>
   </div>
 
+  <progress id="progress" max="1" value="0"
+    aria-label="파일 처리 진행률"></progress>
+
   <div id="status" role="status" aria-live="polite">
-    두 파일을 선택한 뒤 ‘변환 및 검증’을 눌러주세요.
+    프로그램을 준비하고 있습니다.
   </div>
+
+  <noscript>JavaScript를 허용해야 사용할 수 있습니다.</noscript>
+
+  <section class="card">
+    <h2>파일별 처리 결과</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>번호</th>
+            <th>A파일</th>
+            <th>상태</th>
+            <th>옵션 수</th>
+            <th>결과 파일명</th>
+            <th>상세</th>
+          </tr>
+        </thead>
+        <tbody id="resultBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><label for="previewSelect">검증 통과 파일 미리보기</label></h2>
+    <select id="previewSelect" disabled>
+      <option value="">변환 후 선택하세요.</option>
+    </select>
+    <p id="previewInfo" class="small muted"></p>
+  </section>
 
   <div class="grid">
     <section class="card">
@@ -177,857 +200,1135 @@ footer {
 
   <footer>
     <p>
-      각 파일의 첫 번째 시트 / 제목 2행 / 데이터 4행부터를 사용합니다.
+      첫 번째 시트 / 제목 2행 / 데이터 4행부터를 사용합니다.
       중간 빈 행은 위로 당기지 않습니다.
-      미리보기는 최대 100개 옵션이며 결과 파일에는 전체 옵션을 반영합니다.
+      미리보기는 파일당 최대 100개이며 결과에는 전체 옵션을 포함합니다.
     </p>
     <p>
-      수정 대상은 옵션이 입력되는 행의 A~E열 및 L~M열입니다.
-      F~K열 등 다른 셀은 유지하므로 기존 내용은 별도로 확인하세요.
-      원본 재고가 빈칸이면 중단하며, 숫자 0은 정상 처리합니다.
+      수정 대상은 옵션 행의 A~E열 및 L~M열입니다.
+      F~K열 등 다른 영역은 유지하므로 기존 내용은 별도로 확인하세요.
+      재고 빈칸은 오류이며 숫자 0은 정상 처리합니다.
+    </p>
+    <p>
+      파일마다 B 원본을 새로 사용합니다.
+      오류 파일은 결과 엑셀에서 제외하고 처리결과.txt에 기록합니다.
+      같은 결과 이름에는 (2) 등을 붙여 덮어쓰기를 방지합니다.
+    </p>
+    <p>
+      이번 일괄 작업에서 생성한 품번코드·새 단품코드가 서로 중복되면
+      나중 파일은 실패 처리합니다.
+      이전 작업이나 외부 서비스의 기존 데이터까지 검사하지는 않습니다.
     </p>
     <p>
       파일은 브라우저에서 처리하며 서버로 전송하지 않습니다.
       라이브러리 로딩에는 인터넷 연결이 필요합니다.
+      대용량 파일은 나누어 처리하세요.
       검증 통과가 외부 서비스의 업로드 성공을 보장하지는 않습니다.
-      원본 파일은 별도로 보관하세요.
     </p>
   </footer>
 </main>
 
 <script>
-"use strict";
+(() => {
+  "use strict";
 
-/* 설정 */
-const CONFIG = Object.freeze({
-  startRow: 4,
-  title: "(택1) 색상:패션의류/잡화 사이즈:수량",
-  optionType: 2,
-  namespace:
-    "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-});
-
-const TARGET_COLUMNS = [0, 1, 2, 3, 4, 11, 12];
-const TARGET_LETTERS = ["A", "B", "C", "D", "E", "L", "M"];
-
-const $ = id => document.getElementById(id);
-const state = { busy: false, result: null };
-
-function showStatus(message, type = "") {
-  $("status").textContent = message;
-  $("status").className = type;
-}
-
-function setBusy(value) {
-  state.busy = value;
-  for (const id of ["fileA", "fileB", "convert"]) {
-    $(id).disabled = value;
-  }
-  $("download").disabled = value || !state.result;
-}
-
-function reset() {
-  state.result = null;
-  $("download").disabled = true;
-  $("tableA").replaceChildren();
-  $("tableB").replaceChildren();
-}
-
-function cellText(cell) {
-  return cell ? String(XLSX.utils.format_cell(cell)).trim() : "";
-}
-
-function hasValue(cell) {
-  return Boolean(cell?.f) || cellText(cell) !== "";
-}
-
-function normalize(value) {
-  return String(value ?? "").replace(/\s/g, "");
-}
-
-function nodes(root, name) {
-  return [...root.getElementsByTagNameNS("*", name)];
-}
-
-function parseXML(value) {
-  const doc = new DOMParser().parseFromString(value, "application/xml");
-  if (nodes(doc, "parsererror").length) {
-    throw new Error("엑셀 내부 XML을 읽지 못했습니다.");
-  }
-  return doc;
-}
-
-function serialize(node) {
-  return new XMLSerializer().serializeToString(node);
-}
-
-async function zipText(zip, path) {
-  const entry = zip.file(path);
-  if (!entry) throw new Error("엑셀 내부 파일이 없습니다: " + path);
-  return entry.async("string");
-}
-
-function dataRows(sheet, columns) {
-  const result = new Set();
-
-  for (const address of Object.keys(sheet)) {
-    const match = /^([A-Z]+)([1-9]\d*)$/.exec(address);
-    if (
-      match &&
-      columns.includes(match[1]) &&
-      Number(match[2]) >= CONFIG.startRow &&
-      hasValue(sheet[address])
-    ) {
-      result.add(Number(match[2]));
-    }
-  }
-
-  return [...result].sort((a, b) => a - b);
-}
-
-/* 제목 검사: 공백과 줄바꿈은 무시 */
-function checkHeaders(a, b) {
-  const checks = [
-    [a, "A2", "품번코드[수정불가]", "A"],
-    [a, "B2", "단품코드", "A"],
-    [a, "D2", "옵션상세명칭", "A"],
-    [a, "E2", "가상재고", "A"],
-    [a, "M2", "연결상품코드", "A"],
-    [b, "A2", "품번코드[수정불가]", "B"],
-    [b, "B2", "단품코드", "B"],
-    [b, "C2", "옵션제목", "B"],
-    [b, "D2", "옵션상세명칭", "B"],
-    [b, "E2", "가상재고", "B"],
-    [b, "L2", "옵션구분", "B"],
-    [b, "M2", "연결상품코드", "B"]
-  ];
-
-  for (const [sheet, address, expected, side] of checks) {
-    if (normalize(cellText(sheet[address])) !== normalize(expected)) {
-      throw new Error(
-        `${side}파일 ${address}의 제목을 확인하세요.\n` +
-        `필요한 제목: ${expected}`
-      );
-    }
-  }
-}
-
-/* 원본 데이터 읽기 */
-function readCode(cell, address) {
-  const value = cellText(cell).replace(/^'/, "");
-
-  if (cell?.f || cell?.t === "e" || !/^\d{1,4}$/.test(value)) {
-    throw new Error(
-      `${address}: 단품코드는 수식이 아닌 1~4자리 숫자여야 합니다.`
-    );
-  }
-
-  return value.padStart(4, "0");
-}
-
-function readStock(cell, address) {
-  if (cell?.f || cell?.t === "e") {
-    throw new Error(
-      `${address}에 수식 또는 오류가 있습니다. 숫자 값으로 바꿔주세요.`
-    );
-  }
-
-  // 숫자 0은 빈칸으로 처리하지 않습니다.
-  if (!cell || cell.v == null || String(cell.v).trim() === "") {
-    throw new Error(`${address}의 가상재고가 비어 있습니다.`);
-  }
-
-  if (typeof cell.v === "number") {
-    if (!Number.isFinite(cell.v)) {
-      throw new Error(`${address}의 가상재고가 유효한 숫자가 아닙니다.`);
-    }
-    return cell.v;
-  }
-
-  const value = String(cell.v).trim();
-
-  if (!/^[+-]?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(value)) {
-    throw new Error(`${address}의 가상재고를 확인하세요: ${value}`);
-  }
-
-  const number = Number(value.replace(/,/g, ""));
-
-  if (!Number.isFinite(number)) {
-    throw new Error(`${address}의 가상재고가 유효한 숫자가 아닙니다.`);
-  }
-
-  return number;
-}
-
-function readLink(cell, address) {
-  if (cell?.f || cell?.t === "e") {
-    throw new Error(
-      `${address}에 수식 또는 오류가 있습니다. 값으로 바꿔주세요.`
-    );
-  }
-
-  if (!cell || cell.v == null) return "";
-  if (typeof cell.v === "string") return cell.v;
-
-  return String(XLSX.utils.format_cell(cell));
-}
-
-function readSource(sheet) {
-  const optionRows = dataRows(sheet, ["D"]);
-  const codeRows = dataRows(sheet, ["B"]);
-
-  if (!optionRows.length) {
-    throw new Error("A파일 D4 이후에 옵션상세명칭이 없습니다.");
-  }
-
-  if (!codeRows.length) {
-    throw new Error("A파일에 기존 단품코드가 없습니다.");
-  }
-
-  let lastCode = "";
-  const existingCodes = new Set();
-
-  // 최댓값이 아니라 마지막 데이터 행의 코드를 사용합니다.
-  for (const row of codeRows) {
-    lastCode = readCode(sheet["B" + row], `A파일 B${row}`);
-    existingCodes.add(lastCode);
-  }
-
-  for (const row of dataRows(sheet, ["A", "B", "E", "M"])) {
-    if (!hasValue(sheet["D" + row])) {
-      throw new Error(
-        `A파일 ${row}행에 데이터가 있지만 옵션상세명칭이 없습니다.\n` +
-        "해당 행을 임의로 제외하지 않고 중단했습니다."
-      );
-    }
-  }
-
-  const rows = optionRows.map(row => {
-    const productCell = sheet["A" + row];
-    const optionCell = sheet["D" + row];
-    const product = cellText(productCell);
-
-    if (
-      productCell?.f ||
-      productCell?.t === "e" ||
-      !/^\d+$/.test(product)
-    ) {
-      throw new Error(
-        `A파일 A${row}의 품번코드가 없거나 형식이 잘못되었습니다.`
-      );
-    }
-
-    const oldCode = readCode(sheet["B" + row], `A파일 B${row}`);
-    const original = cellText(optionCell);
-    const parts = original.split(":").map(part => part.trim());
-
-    if (
-      optionCell?.f ||
-      optionCell?.t === "e" ||
-      parts.length !== 2 ||
-      parts.some(part => !part)
-    ) {
-      throw new Error(
-        `A파일 D${row}의 옵션 형식을 확인하세요: ${original}\n` +
-        "필요한 형식: 앞항목:뒤항목"
-      );
-    }
-
-    return {
-      sourceRow: row,
-      product,
-      oldCode,
-      original,
-      option: `${parts[1]}:${parts[0]}:1개`,
-      stock: readStock(sheet["E" + row], `A파일 E${row}`),
-      link: readLink(sheet["M" + row], `A파일 M${row}`)
-    };
+  const CFG = Object.freeze({
+    start: 4,
+    title: "(택1) 색상:패션의류/잡화 사이즈:수량",
+    optionType: 2,
+    ns: "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
   });
 
-  if (Number(lastCode) + rows.length > 9999) {
-    throw new Error("새 단품코드가 4자리 범위인 9999를 초과합니다.");
-  }
+  const TARGET_COLS = [0, 1, 2, 3, 4, 11, 12];
+  const TARGET_LETTERS = ["A", "B", "C", "D", "E", "L", "M"];
+  const $ = id => document.getElementById(id);
 
-  rows.forEach((item, index) => {
-    item.code = String(Number(lastCode) + index + 1).padStart(4, "0");
-
-    if (existingCodes.has(item.code)) {
-      throw new Error(
-        `생성 코드 ${item.code}가 A의 기존 단품코드와 중복됩니다.`
-      );
-    }
-  });
-
-  return {
-    rows,
-    count: rows.length,
-    rowSet: new Set(optionRows),
-    zeroCount: rows.filter(item => item.stock === 0).length,
-    blankLinks: rows.filter(item => !item.link.trim()).length
+  const state = {
+    busy: false,
+    archive: null,
+    results: [],
+    previews: [],
+    names: new Set(),
+    generatedPairs: new Map(),
+    zipName: ""
   };
-}
 
-/* B의 첫 번째 시트 XML 경로 */
-function resolvePath(base, target) {
-  const path = target.startsWith("/")
-    ? target.slice(1)
-    : base.slice(0, base.lastIndexOf("/") + 1) + target;
+  const nodes = (root, name) =>
+    [...root.getElementsByTagNameNS("*", name)];
 
-  const parts = [];
-  for (const part of path.split("/")) {
-    if (part === "..") parts.pop();
-    else if (part && part !== ".") parts.push(part);
+  const serialize = node =>
+    new XMLSerializer().serializeToString(node);
+
+  const pause = () =>
+    new Promise(resolve => setTimeout(resolve, 0));
+
+  const errorText = error => error?.message || String(error);
+
+  function showStatus(message, type = "") {
+    $("status").textContent = message;
+    $("status").className = type;
   }
 
-  return parts.join("/");
-}
-
-async function getSheetPath(zip) {
-  const path = "xl/workbook.xml";
-  const workbook = parseXML(await zipText(zip, path));
-  const sheet = nodes(workbook, "sheet")[0];
-
-  if (!sheet) throw new Error("B파일에 시트가 없습니다.");
-
-  const id = [...sheet.attributes].find(
-    attribute => attribute.localName === "id"
-  )?.value;
-
-  const relationships = parseXML(
-    await zipText(zip, "xl/_rels/workbook.xml.rels")
-  );
-
-  const relationship = nodes(relationships, "Relationship").find(
-    item => item.getAttribute("Id") === id
-  );
-
-  if (
-    !relationship ||
-    relationship.getAttribute("TargetMode") === "External"
-  ) {
-    throw new Error("B파일 첫 번째 시트 경로를 찾지 못했습니다.");
+  function setBusy(value) {
+    state.busy = value;
+    for (const id of ["filesA", "fileB", "convert"]) {
+      $(id).disabled = value;
+    }
+    $("download").disabled = value || !state.archive;
+    $("previewSelect").disabled = value || !state.previews.length;
   }
 
-  return resolvePath(path, relationship.getAttribute("Target"));
-}
+  function resetResults() {
+    state.archive = null;
+    state.results = [];
+    state.previews = [];
+    state.names = new Set();
+    state.generatedPairs = new Map();
+    state.zipName = "";
 
-/* 수정 대상과 보호 검사 */
-function isTargetCell(address, rowSet) {
-  const point = XLSX.utils.decode_cell(address);
-
-  return (
-    rowSet.has(point.r + 1) &&
-    TARGET_COLUMNS.includes(point.c)
-  );
-}
-
-function overlapsTarget(reference, source) {
-  const range = XLSX.utils.decode_range(reference);
-
-  if (!TARGET_COLUMNS.some(
-    column => column >= range.s.c && column <= range.e.c
-  )) {
-    return false;
+    $("download").disabled = true;
+    $("download").textContent = "결과 ZIP 다운로드";
+    $("previewSelect").disabled = true;
+    $("previewSelect").replaceChildren(
+      new Option("변환 후 선택하세요.", "")
+    );
+    $("resultBody").replaceChildren();
+    $("tableA").replaceChildren();
+    $("tableB").replaceChildren();
+    $("previewInfo").textContent = "";
+    $("progress").value = 0;
+    $("progress").max = 1;
   }
 
-  return source.rows.some(item => {
-    const row = item.sourceRow - 1;
-    return row >= range.s.r && row <= range.e.r;
-  });
-}
-
-function checkTarget(doc, sheet, source) {
-  const root = doc.documentElement;
-
-  if (
-    root.localName !== "worksheet" ||
-    root.namespaceURI !== CONFIG.namespace ||
-    !nodes(doc, "sheetData")[0]
-  ) {
-    throw new Error("지원하지 않는 B 시트 형식입니다.");
-  }
-
-  if (nodes(doc, "sheetProtection").length) {
-    throw new Error("B 시트 보호를 해제한 복사본을 사용하세요.");
-  }
-
-  for (const merge of nodes(doc, "mergeCell")) {
-    const reference = merge.getAttribute("ref");
-
-    if (overlapsTarget(reference, source)) {
+  function ensureLibraries() {
+    if (!window.XLSX || !window.JSZip) {
       throw new Error(
-        `B 입력 범위에 병합 셀 ${reference}가 있습니다.\n` +
-        "병합을 임의로 해제하지 않고 중단했습니다."
+        "엑셀 라이브러리 로딩 실패.\n" +
+        "인터넷 연결 또는 CDN 차단 여부를 확인하고 새로고침하세요."
       );
     }
   }
 
-  for (const formula of nodes(doc, "f")) {
-    const address = formula.parentElement?.getAttribute("r");
-    const reference = formula.getAttribute("ref");
-
-    if (
-      (address && isTargetCell(address, source.rowSet)) ||
-      (reference && overlapsTarget(reference, source))
-    ) {
-      throw new Error(
-        "B 입력 범위에 수식이 있습니다. 수식을 덮어쓰지 않고 중단했습니다."
-      );
-    }
+  function cellText(cell) {
+    if (!cell || cell.v == null) return "";
+    if (typeof cell.v === "string") return cell.v.trim();
+    return String(XLSX.utils.format_cell(cell)).trim();
   }
 
-  for (const row of dataRows(sheet, TARGET_LETTERS)) {
-    if (!source.rowSet.has(row)) {
-      throw new Error(
-        `B ${row}행에 A의 옵션과 대응하지 않는 기존 데이터가 있습니다.\n` +
-        "임의로 삭제하지 않습니다. 빈 B양식 복사본을 사용하세요."
-      );
-    }
+  function present(cell) {
+    if (!cell) return false;
+    if (cell.f || cell.t === "e") return true;
+    if (cell.v == null) return false;
+    return typeof cell.v === "string" ? cell.v.trim() !== "" : true;
   }
-}
 
-/* 보존 여부 검사용 */
-function topSnapshot(doc) {
-  return nodes(doc, "row")
-    .filter(row => {
-      const number = Number(row.getAttribute("r"));
-      return number >= 1 && number <= 3;
-    })
-    .map(serialize)
-    .join("");
-}
+  function parseXML(value) {
+    const doc = new DOMParser().parseFromString(value, "application/xml");
+    if (nodes(doc, "parsererror").length) {
+      throw new Error("엑셀 내부 XML을 읽지 못했습니다.");
+    }
+    return doc;
+  }
 
-function outsideSnapshot(doc, rowSet) {
-  return nodes(doc, "c")
-    .filter(cell => !isTargetCell(cell.getAttribute("r"), rowSet))
-    .map(serialize)
-    .join("");
-}
+  async function zipText(zip, path) {
+    const entry = zip.file(path);
+    if (!entry) throw new Error("엑셀 내부 파일이 없습니다: " + path);
+    return entry.async("string");
+  }
 
-/* 원본 행 번호 그대로 B 작성 */
-function fillOutput(doc, source) {
-  const prefix = doc.documentElement.prefix;
+  function populatedCells(sheet) {
+    return Object.keys(sheet)
+      .filter(address =>
+        /^[A-Z]+[1-9]\d*$/.test(address) && present(sheet[address])
+      )
+      .map(address => ({
+        address,
+        point: XLSX.utils.decode_cell(address)
+      }));
+  }
 
-  const create = name => doc.createElementNS(
-    CONFIG.namespace,
-    prefix ? prefix + ":" + name : name
-  );
+  function dataRows(sheet, columns) {
+    const rows = new Set();
 
-  const data = nodes(doc, "sheetData")[0];
-  const rowMap = new Map(
-    [...data.children]
-      .filter(node => node.localName === "row")
-      .map(row => [Number(row.getAttribute("r")), row])
-  );
-
-  for (const item of source.rows) {
-    const rowNumber = item.sourceRow;
-    const abc = [item.product, item.code, CONFIG.title];
-    const abcd = [...abc, item.option];
-
-    if (!abc.every(value => String(value ?? "").trim() !== "")) {
-      throw new Error(`B ${rowNumber}행의 A~C가 비어 있습니다.`);
+    for (const { point } of populatedCells(sheet)) {
+      if (
+        point.r >= CFG.start - 1 &&
+        columns.includes(XLSX.utils.encode_col(point.c))
+      ) {
+        rows.add(point.r + 1);
+      }
     }
 
-    if (!abcd.every(value => String(value ?? "").trim() !== "")) {
-      throw new Error(`B ${rowNumber}행의 A~D가 비어 있습니다.`);
-    }
+    return [...rows].sort((a, b) => a - b);
+  }
 
-    const values = [
-      [0, item.product],
-      [1, item.code],
-      [2, CONFIG.title],
-      [3, item.option],
-      [4, item.stock],
-      [11, CONFIG.optionType],
-      [12, item.link]
-    ];
+  /* 제목 검사 */
+  function checkHeaders(sheet, side) {
+    const checks = side === "A"
+      ? [
+          ["A2", "품번코드[수정불가]"],
+          ["B2", "단품코드"],
+          ["D2", "옵션상세명칭"],
+          ["E2", "가상재고"],
+          ["M2", "연결상품코드"]
+        ]
+      : [
+          ["A2", "품번코드[수정불가]"],
+          ["B2", "단품코드"],
+          ["C2", "옵션제목"],
+          ["D2", "옵션상세명칭"],
+          ["E2", "가상재고"],
+          ["L2", "옵션구분"],
+          ["M2", "연결상품코드"]
+        ];
 
-    let row = rowMap.get(rowNumber);
+    const normalize = value => String(value).replace(/\s/g, "");
 
-    if (!row) {
-      row = create("row");
-      row.setAttribute("r", String(rowNumber));
-
-      const next = [...data.children].find(node =>
-        node.localName === "row" &&
-        Number(node.getAttribute("r")) > rowNumber
-      );
-
-      data.insertBefore(row, next || null);
-      rowMap.set(rowNumber, row);
-    }
-
-    for (const [column, value] of values) {
-      const address = XLSX.utils.encode_col(column) + rowNumber;
-
-      let cell = [...row.children].find(node =>
-        node.localName === "c" &&
-        node.getAttribute("r") === address
-      );
-
-      if (!cell) {
-        cell = create("c");
-        cell.setAttribute("r", address);
-
-        const next = [...row.children].find(node =>
-          node.localName !== "c" ||
-          XLSX.utils.decode_cell(node.getAttribute("r")).c > column
+    for (const [address, expected] of checks) {
+      if (normalize(cellText(sheet[address])) !== normalize(expected)) {
+        throw new Error(
+          `${side} ${address}: 제목을 확인하세요.\n필요한 제목: ${expected}`
         );
+      }
+    }
+  }
 
-        row.insertBefore(cell, next || null);
+  /* A 값 읽기 */
+  function requirePlain(cell, address) {
+    if (cell?.f || cell?.t === "e") {
+      throw new Error(
+        `${address}: 수식 또는 오류가 있습니다. 값으로 바꿔주세요.`
+      );
+    }
+  }
+
+  function readCode(cell, address) {
+    requirePlain(cell, address);
+    const value = cellText(cell).replace(/^'/, "");
+
+    if (!/^\d{1,4}$/.test(value)) {
+      throw new Error(`${address}: 단품코드는 1~4자리 숫자여야 합니다.`);
+    }
+
+    return value.padStart(4, "0");
+  }
+
+  function readStock(cell, address) {
+    requirePlain(cell, address);
+
+    if (!cell || cell.v == null || String(cell.v).trim() === "") {
+      throw new Error(`${address}: 가상재고가 비어 있습니다.`);
+    }
+
+    if (typeof cell.v === "number") {
+      if (!Number.isFinite(cell.v)) {
+        throw new Error(`${address}: 유효한 숫자가 아닙니다.`);
+      }
+      return cell.v; // 숫자 0 포함
+    }
+
+    const value = String(cell.v).trim();
+
+    if (!/^[+-]?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(value)) {
+      throw new Error(`${address}: 재고를 숫자로 읽을 수 없습니다: ${value}`);
+    }
+
+    const number = Number(value.replace(/,/g, ""));
+
+    if (!Number.isFinite(number)) {
+      throw new Error(`${address}: 유효한 숫자가 아닙니다.`);
+    }
+
+    return number;
+  }
+
+  function readLink(cell, address) {
+    requirePlain(cell, address);
+    if (!cell || cell.v == null) return "";
+    if (typeof cell.v === "string") return cell.v;
+    return String(XLSX.utils.format_cell(cell));
+  }
+
+  function readSource(sheet) {
+    const optionRows = dataRows(sheet, ["D"]);
+    const codeRows = dataRows(sheet, ["B"]);
+
+    if (!optionRows.length) {
+      throw new Error("A D4 이후에 옵션상세명칭이 없습니다.");
+    }
+    if (!codeRows.length) {
+      throw new Error("A B4 이후에 단품코드가 없습니다.");
+    }
+
+    const rowSet = new Set(optionRows);
+    const existingCodes = new Set();
+    let lastCode = "";
+
+    // 최댓값이 아닌 마지막 데이터 행의 코드를 사용합니다.
+    for (const row of codeRows) {
+      lastCode = readCode(sheet["B" + row], `A B${row}`);
+      existingCodes.add(lastCode);
+    }
+
+    // 관련 데이터가 있는데 D열만 비어 있으면 누락 방지를 위해 중단
+    for (const row of dataRows(sheet, ["A", "B", "E", "M"])) {
+      if (!rowSet.has(row)) {
+        throw new Error(
+          `A ${row}행에 데이터가 있지만 D${row} 옵션이 비어 있습니다.`
+        );
+      }
+    }
+
+    const rows = optionRows.map(row => {
+      const productCell = sheet["A" + row];
+      requirePlain(productCell, `A A${row}`);
+
+      const product = cellText(productCell);
+      if (!/^\d+$/.test(product)) {
+        throw new Error(`A A${row}: 품번코드가 없거나 잘못되었습니다.`);
       }
 
-      for (const child of [...cell.children]) {
-        if (["v", "is", "f"].includes(child.localName)) {
-          child.remove();
+      const oldCode = readCode(sheet["B" + row], `A B${row}`);
+      const optionCell = sheet["D" + row];
+      requirePlain(optionCell, `A D${row}`);
+
+      const original = cellText(optionCell);
+      const parts = original.split(":").map(part => part.trim());
+
+      if (parts.length !== 2 || parts.some(part => !part)) {
+        throw new Error(
+          `A D${row}: 옵션 형식을 확인하세요: ${original}\n` +
+          "필요한 형식: 앞항목:뒤항목"
+        );
+      }
+
+      return {
+        row,
+        product,
+        oldCode,
+        original,
+        option: `${parts[1]}:${parts[0]}:1개`,
+        stock: readStock(sheet["E" + row], `A E${row}`),
+        oldType: cellText(sheet["L" + row]),
+        link: readLink(sheet["M" + row], `A M${row}`)
+      };
+    });
+
+    if (Number(lastCode) + rows.length > 9999) {
+      throw new Error("생성할 단품코드가 9999를 초과합니다.");
+    }
+
+    rows.forEach((item, index) => {
+      item.code = String(Number(lastCode) + index + 1).padStart(4, "0");
+
+      if (existingCodes.has(item.code)) {
+        throw new Error(
+          `A ${item.row}행: 생성 코드 ${item.code}가 기존 코드와 중복됩니다.`
+        );
+      }
+    });
+
+    return {
+      rows,
+      rowSet,
+      count: rows.length,
+      zeroCount: rows.filter(item => item.stock === 0).length,
+      blankLinks: rows.filter(item => !item.link.trim()).length
+    };
+  }
+
+  /* B 시트 XML 경로 */
+  function resolvePath(base, target) {
+    const path = target.startsWith("/")
+      ? target.slice(1)
+      : base.slice(0, base.lastIndexOf("/") + 1) + target;
+
+    const parts = [];
+    for (const part of path.split("/")) {
+      if (part === "..") parts.pop();
+      else if (part && part !== ".") parts.push(part);
+    }
+    return parts.join("/");
+  }
+
+  async function getSheetPath(zip) {
+    const book = parseXML(await zipText(zip, "xl/workbook.xml"));
+    const sheet = nodes(book, "sheet")[0];
+
+    if (!sheet) throw new Error("B에 시트가 없습니다.");
+
+    const id = [...sheet.attributes].find(
+      attribute => attribute.localName === "id"
+    )?.value;
+
+    const rels = parseXML(
+      await zipText(zip, "xl/_rels/workbook.xml.rels")
+    );
+
+    const rel = nodes(rels, "Relationship").find(
+      item => item.getAttribute("Id") === id
+    );
+
+    if (!rel || rel.getAttribute("TargetMode") === "External") {
+      throw new Error("B 첫 번째 시트 경로를 확인할 수 없습니다.");
+    }
+
+    return resolvePath("xl/workbook.xml", rel.getAttribute("Target"));
+  }
+
+  async function loadTemplate(file) {
+    if (!file || !/\.xlsx$/i.test(file.name)) {
+      throw new Error("B양식은 .xlsx 파일을 선택하세요.");
+    }
+
+    const buffer = await file.arrayBuffer();
+    const book = XLSX.read(buffer, { type: "array" });
+    const sheet = book.Sheets[book.SheetNames[0]];
+
+    if (!sheet) throw new Error("B 첫 번째 시트를 읽지 못했습니다.");
+
+    checkHeaders(sheet, "B");
+
+    const zip = await JSZip.loadAsync(buffer);
+    const path = await getSheetPath(zip);
+    const doc = parseXML(await zipText(zip, path));
+
+    if (
+      doc.documentElement.localName !== "worksheet" ||
+      doc.documentElement.namespaceURI !== CFG.ns ||
+      !nodes(doc, "sheetData")[0]
+    ) {
+      throw new Error("지원하지 않는 B 시트 형식입니다.");
+    }
+
+    if (nodes(doc, "sheetProtection").length) {
+      throw new Error("B 시트 보호를 해제한 복사본을 사용하세요.");
+    }
+
+    return { buffer, sheet, path, doc };
+  }
+
+  function isTarget(address, rowSet) {
+    const point = XLSX.utils.decode_cell(address);
+    return rowSet.has(point.r + 1) && TARGET_COLS.includes(point.c);
+  }
+
+  function overlaps(reference, source) {
+    const range = XLSX.utils.decode_range(reference);
+
+    return TARGET_COLS.some(
+      col => col >= range.s.c && col <= range.e.c
+    ) && source.rows.some(
+      item => item.row - 1 >= range.s.r && item.row - 1 <= range.e.r
+    );
+  }
+
+  function checkTarget(template, source) {
+    for (const merge of nodes(template.doc, "mergeCell")) {
+      const ref = merge.getAttribute("ref");
+      if (overlaps(ref, source)) {
+        throw new Error(`B ${ref}: 입력 대상과 병합 셀이 겹칩니다.`);
+      }
+    }
+
+    for (const formula of nodes(template.doc, "f")) {
+      const address = formula.parentElement?.getAttribute("r");
+      const ref = formula.getAttribute("ref");
+
+      if (
+        (address && isTarget(address, source.rowSet)) ||
+        (ref && overlaps(ref, source))
+      ) {
+        throw new Error(`B ${address || ref}: 입력 대상에 수식이 있습니다.`);
+      }
+    }
+
+    let preservedCount = 0;
+
+    for (const { address, point } of populatedCells(template.sheet)) {
+      if (point.r < CFG.start - 1) continue;
+
+      if (!source.rowSet.has(point.r + 1)) {
+        throw new Error(
+          `B ${address}: A의 옵션과 대응하지 않는 기존 데이터가 있습니다.\n` +
+          "임의로 삭제하지 않습니다. 빈 B양식 복사본을 사용하세요."
+        );
+      }
+
+      if (!TARGET_COLS.includes(point.c)) preservedCount++;
+    }
+
+    return preservedCount;
+  }
+
+  /* 상단·다른 셀·서식·행 속성 보존 검사 */
+  function attributeSnapshot(node) {
+    return JSON.stringify(
+      [...node.attributes]
+        .map(attr => [attr.namespaceURI || "", attr.name, attr.value])
+        .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))
+    );
+  }
+
+  function verifyPreservation(original, output, rowSet) {
+    const outputRows = new Map(
+      nodes(output, "row").map(row => [row.getAttribute("r"), row])
+    );
+
+    for (const row of nodes(original, "row")) {
+      const number = row.getAttribute("r");
+      const saved = outputRows.get(number);
+
+      if (!saved || attributeSnapshot(row) !== attributeSnapshot(saved)) {
+        throw new Error(`B ${number}행: 행 속성 보존 검증 실패`);
+      }
+
+      if (Number(number) <= 3 && serialize(row) !== serialize(saved)) {
+        throw new Error(`B ${number}행: 상단 행 보존 검증 실패`);
+      }
+    }
+
+    const originalCells = new Map(
+      nodes(original, "c").map(cell => [cell.getAttribute("r"), cell])
+    );
+    const outputCells = new Map(
+      nodes(output, "c").map(cell => [cell.getAttribute("r"), cell])
+    );
+
+    for (const [address, cell] of originalCells) {
+      const saved = outputCells.get(address);
+
+      if (!saved) {
+        throw new Error(`B ${address}: 원본 셀이 사라졌습니다.`);
+      }
+
+      if (!isTarget(address, rowSet)) {
+        if (serialize(cell) !== serialize(saved)) {
+          throw new Error(`B ${address}: 수정 대상 외 셀이 변경되었습니다.`);
+        }
+      } else if (cell.getAttribute("s") !== saved.getAttribute("s")) {
+        throw new Error(`B ${address}: 기존 셀 서식이 변경되었습니다.`);
+      }
+    }
+
+    for (const address of outputCells.keys()) {
+      if (!originalCells.has(address) && !isTarget(address, rowSet)) {
+        throw new Error(`B ${address}: 수정 대상 외 셀이 추가되었습니다.`);
+      }
+    }
+
+    const metadata = doc => [...doc.documentElement.children]
+      .filter(node => !["sheetData", "dimension"].includes(node.localName))
+      .map(serialize).join("");
+
+    if (metadata(original) !== metadata(output)) {
+      throw new Error("B 병합·열 서식 등 시트 설정 보존 검증 실패");
+    }
+  }
+
+  /* 원본 행 번호 그대로 A~E, L~M 작성 */
+  function fillOutput(doc, source) {
+    const prefix = doc.documentElement.prefix;
+    const create = name => doc.createElementNS(
+      CFG.ns, prefix ? prefix + ":" + name : name
+    );
+
+    const data = nodes(doc, "sheetData")[0];
+    const rowMap = new Map(
+      [...data.children]
+        .filter(node => node.localName === "row")
+        .map(row => [Number(row.getAttribute("r")), row])
+    );
+
+    for (const item of source.rows) {
+      if (![item.product, item.code, CFG.title, item.option]
+        .every(value => String(value ?? "").trim() !== "")) {
+        throw new Error(`B ${item.row}행: A~D가 비어 있습니다.`);
+      }
+
+      const values = [
+        [0, item.product],
+        [1, item.code],
+        [2, CFG.title],
+        [3, item.option],
+        [4, item.stock],
+        [11, CFG.optionType],
+        [12, item.link]
+      ];
+
+      let row = rowMap.get(item.row);
+
+      if (!row) {
+        row = create("row");
+        row.setAttribute("r", String(item.row));
+
+        const next = [...data.children].find(node =>
+          node.localName === "row" &&
+          Number(node.getAttribute("r")) > item.row
+        );
+
+        data.insertBefore(row, next || null);
+        rowMap.set(item.row, row);
+      }
+
+      for (const [column, value] of values) {
+        const address = XLSX.utils.encode_col(column) + item.row;
+        let cell = [...row.children].find(node =>
+          node.localName === "c" && node.getAttribute("r") === address
+        );
+
+        if (!cell) {
+          cell = create("c");
+          cell.setAttribute("r", address);
+
+          const next = [...row.children].find(node =>
+            node.localName !== "c" ||
+            XLSX.utils.decode_cell(node.getAttribute("r")).c > column
+          );
+
+          row.insertBefore(cell, next || null);
+        }
+
+        for (const child of [...cell.children]) {
+          if (["v", "is", "f"].includes(child.localName)) {
+            child.remove();
+          }
+        }
+
+        if (typeof value === "number") {
+          cell.setAttribute("t", "n");
+          const number = create("v");
+          number.textContent = String(value);
+          cell.insertBefore(number, cell.firstChild);
+        } else {
+          cell.setAttribute("t", "inlineStr");
+          const inline = create("is");
+          const text = create("t");
+
+          text.setAttributeNS(
+            "http://www.w3.org/XML/1998/namespace",
+            "xml:space",
+            "preserve"
+          );
+
+          text.textContent = value;
+          inline.appendChild(text);
+          cell.insertBefore(inline, cell.firstChild);
+        }
+      }
+    }
+
+    const dimension = nodes(doc, "dimension")[0];
+
+    if (dimension) {
+      const range = XLSX.utils.decode_range(dimension.getAttribute("ref"));
+
+      range.s.c = 0;
+      range.s.r = Math.min(range.s.r, source.rows[0].row - 1);
+      range.e.c = Math.max(range.e.c, 12);
+      range.e.r = Math.max(
+        range.e.r, source.rows[source.rows.length - 1].row - 1
+      );
+
+      dimension.setAttribute("ref", XLSX.utils.encode_range(range));
+    }
+  }
+
+  /* 실제 결과 파일 재검증 */
+  function verifyOutput(bytes, source) {
+    const book = XLSX.read(bytes, { type: "array" });
+    const sheet = book.Sheets[book.SheetNames[0]];
+    if (!sheet) throw new Error("생성 결과 시트를 읽지 못했습니다.");
+
+    const optionRows = dataRows(sheet, ["D"]);
+
+    if (optionRows.length !== source.count) {
+      throw new Error(
+        `옵션 수 불일치: A ${source.count}개 / B ${optionRows.length}개`
+      );
+    }
+
+    source.rows.forEach((item, index) => {
+      if (optionRows[index] !== item.row) {
+        throw new Error(`B D${item.row}: 원본 행 번호와 다릅니다.`);
+      }
+
+      const expected = [
+        ["A", item.product],
+        ["B", item.code],
+        ["C", CFG.title],
+        ["D", item.option],
+        ["M", item.link]
+      ];
+
+      for (const [column, value] of expected) {
+        const address = column + item.row;
+        const cell = sheet[address];
+
+        if (cell?.f || String(cell?.v ?? "") !== value) {
+          throw new Error(`B ${address}: 예상 값과 다릅니다.`);
+        }
+
+        if (column === "B" && cell?.t !== "s") {
+          throw new Error(`B ${address}: 단품코드가 텍스트가 아닙니다.`);
         }
       }
 
-      if (typeof value === "number") {
-        // 가상재고 0도 숫자로 저장합니다.
-        cell.setAttribute("t", "n");
-        const number = create("v");
-        number.textContent = String(value);
-        cell.insertBefore(number, cell.firstChild);
-      } else {
-        // 코드의 앞자리 0과 연결상품코드 문자열을 유지합니다.
-        cell.setAttribute("t", "inlineStr");
-        const inline = create("is");
-        const text = create("t");
+      for (const [column, value] of [
+        ["E", item.stock], ["L", CFG.optionType]
+      ]) {
+        const address = column + item.row;
+        const cell = sheet[address];
 
-        text.setAttributeNS(
-          "http://www.w3.org/XML/1998/namespace",
-          "xml:space",
-          "preserve"
-        );
+        if (cell?.f || cell?.t !== "n" || cell.v !== value) {
+          throw new Error(
+            `B ${address}: 숫자 ${value}가 정확하게 저장되지 않았습니다.`
+          );
+        }
+      }
 
-        text.textContent = String(value);
-        inline.appendChild(text);
-        cell.insertBefore(inline, cell.firstChild);
+      if (!["A", "B", "C", "D"].every(
+        col => present(sheet[col + item.row])
+      )) {
+        throw new Error(`B ${item.row}행: 가상재고 입력 조건 검증 실패`);
+      }
+    });
+
+    for (const column of ["E", "L"]) {
+      const rows = dataRows(sheet, [column]);
+
+      if (
+        rows.length !== source.count ||
+        rows.some((row, index) => row !== source.rows[index].row)
+      ) {
+        throw new Error(`B ${column}열: 입력 행이 옵션 행과 다릅니다.`);
+      }
+    }
+
+    for (const row of dataRows(sheet, TARGET_LETTERS)) {
+      if (!source.rowSet.has(row)) {
+        throw new Error(`B ${row}행: 불필요한 결과 데이터가 있습니다.`);
       }
     }
   }
 
-  const dimension = nodes(doc, "dimension")[0];
-
-  if (dimension) {
-    const range = XLSX.utils.decode_range(
-      dimension.getAttribute("ref")
-    );
-
-    range.s.c = 0;
-    range.s.r = Math.min(
-      range.s.r, source.rows[0].sourceRow - 1
-    );
-    range.e.c = Math.max(range.e.c, 12);
-    range.e.r = Math.max(
-      range.e.r,
-      source.rows[source.rows.length - 1].sourceRow - 1
-    );
-
-    dimension.setAttribute("ref", XLSX.utils.encode_range(range));
-  }
-}
-
-/* 생성된 파일을 실제로 다시 읽어 검사 */
-function verifyOutput(bytes, source) {
-  const book = XLSX.read(bytes, { type: "array" });
-  const sheet = book.Sheets[book.SheetNames[0]];
-  const optionRows = dataRows(sheet, ["D"]);
-
-  if (optionRows.length !== source.count) {
-    throw new Error(
-      `옵션 수 불일치: A ${source.count}개 / B ${optionRows.length}개`
-    );
-  }
-
-  source.rows.forEach((item, index) => {
-    const row = item.sourceRow;
-
-    if (optionRows[index] !== row) {
-      throw new Error(
-        `원본 행 불일치: A D${row}의 옵션이 같은 B행에 없습니다.`
-      );
-    }
-
-    const expected = [
-      ["A", item.product],
-      ["B", item.code],
-      ["C", CONFIG.title],
-      ["D", item.option],
-      ["M", item.link]
-    ];
-
-    for (const [column, value] of expected) {
-      const address = column + row;
-      const cell = sheet[address];
-
-      if (cell?.f || String(cell?.v ?? "") !== value) {
-        throw new Error(
-          `B ${address} 값이 A 원본 ${row}행의 예상 결과와 다릅니다.`
-        );
-      }
-    }
-
-    const stock = sheet["E" + row];
-
-    if (stock?.f || stock?.t !== "n" || stock.v !== item.stock) {
-      throw new Error(
-        `B E${row}의 재고가 A E${row}와 다르거나 숫자가 아닙니다.`
-      );
-    }
-
-    const type = sheet["L" + row];
-
-    if (type?.f || type?.t !== "n" || type.v !== CONFIG.optionType) {
-      throw new Error(`B L${row}의 옵션구분이 숫자 2가 아닙니다.`);
-    }
-
-    if (!["A", "B", "C", "D"].every(col => hasValue(sheet[col + row]))) {
-      throw new Error(`B ${row}행의 가상재고 입력 조건을 충족하지 않습니다.`);
-    }
-
-    if (!["A", "B", "C"].every(col => hasValue(sheet[col + row]))) {
-      throw new Error(`B ${row}행의 옵션구분 입력 조건을 충족하지 않습니다.`);
-    }
-  });
-
-  for (const column of ["E", "L"]) {
-    const actualRows = dataRows(sheet, [column]);
-
-    if (
-      actualRows.length !== source.count ||
-      actualRows.some((row, index) => row !== source.rows[index].sourceRow)
-    ) {
-      throw new Error(
-        `B ${column}열의 데이터 행이 원본 옵션 행과 일치하지 않습니다.`
-      );
-    }
-  }
-
-  for (const row of dataRows(sheet, TARGET_LETTERS)) {
-    if (!source.rowSet.has(row)) {
-      throw new Error(`B ${row}행에 불필요한 결과 데이터가 있습니다.`);
-    }
-  }
-
-  return optionRows.length;
-}
-
-/* 미리보기 */
-function renderTable(id, headings, rows) {
-  const table = document.createElement("table");
-  const head = document.createElement("thead");
-  const body = document.createElement("tbody");
-
-  function makeRow(values, tag) {
-    const row = document.createElement("tr");
-    for (const value of values) {
-      const cell = document.createElement(tag);
-      cell.textContent = value;
-      row.appendChild(cell);
-    }
-    return row;
-  }
-
-  head.appendChild(makeRow(headings, "th"));
-
-  rows.slice(0, 100).forEach(row => {
-    body.appendChild(makeRow(row, "td"));
-  });
-
-  table.append(head, body);
-  $(id).replaceChildren(table);
-}
-
-/* 변환 실행 */
-async function convert() {
-  if (state.busy) return;
-
-  reset();
-  setBusy(true);
-
-  try {
-    if (!window.XLSX || !window.JSZip) {
-      throw new Error(
-        "라이브러리를 불러오지 못했습니다. 인터넷 연결 후 새로고침하세요."
-      );
-    }
-
-    const fileA = $("fileA").files[0];
-    const fileB = $("fileB").files[0];
-
-    if (!fileA || !fileB) {
-      throw new Error("A파일과 B파일을 모두 선택하세요.");
-    }
-
-    if (![fileA, fileB].every(file => /\.xlsx$/i.test(file.name))) {
+  /* 파일별 독립 변환 */
+  async function convertOne(file, template) {
+    if (!/\.xlsx$/i.test(file.name)) {
       throw new Error(".xlsx 파일만 사용할 수 있습니다.");
     }
 
-    showStatus("A의 옵션·재고·연결상품코드를 읽고 있습니다.");
+    const buffer = await file.arrayBuffer();
+    const book = XLSX.read(buffer, { type: "array" });
+    const sheet = book.Sheets[book.SheetNames[0]];
+    if (!sheet) throw new Error("A 첫 번째 시트를 읽지 못했습니다.");
 
-    const [bufferA, bufferB] = await Promise.all([
-      fileA.arrayBuffer(),
-      fileB.arrayBuffer()
-    ]);
+    checkHeaders(sheet, "A");
+    const source = readSource(sheet);
+    const preservedCount = checkTarget(template, source);
 
-    const bookA = XLSX.read(bufferA, { type: "array" });
-    const bookB = XLSX.read(bufferB, { type: "array" });
-    const sheetA = bookA.Sheets[bookA.SheetNames[0]];
-    const sheetB = bookB.Sheets[bookB.SheetNames[0]];
-
-    if (!sheetA || !sheetB) {
-      throw new Error("첫 번째 시트를 읽을 수 없습니다.");
-    }
-
-    checkHeaders(sheetA, sheetB);
-    const source = readSource(sheetA);
-
-    const zip = await JSZip.loadAsync(bufferB);
-    const path = await getSheetPath(zip);
-    const original = parseXML(await zipText(zip, path));
-
-    checkTarget(original, sheetB, source);
-
-    const output = original.cloneNode(true);
+    // 매 파일마다 변경되지 않은 B 원본 XML을 복사
+    const output = template.doc.cloneNode(true);
     fillOutput(output, source);
+    verifyPreservation(template.doc, output, source.rowSet);
 
-    if (topSnapshot(original) !== topSnapshot(output)) {
-      throw new Error("B 상단 1~3행 보존 검사에 실패했습니다.");
-    }
-
-    if (
-      outsideSnapshot(original, source.rowSet) !==
-      outsideSnapshot(output, source.rowSet)
-    ) {
-      throw new Error("변경 대상 외 셀의 보존 검사에 실패했습니다.");
-    }
-
-    showStatus("결과 파일을 생성하고 실제 저장 값을 검증하고 있습니다.");
-
-    // B 원본의 해당 시트 XML만 수정합니다.
-    zip.file(path, serialize(output));
+    // ZIP도 B 원본에서 매번 새로 생성
+    const zip = await JSZip.loadAsync(template.buffer);
+    zip.file(template.path, serialize(output));
 
     const bytes = await zip.generateAsync({
       type: "uint8array",
       compression: "DEFLATE"
     });
 
-    const verifiedCount = verifyOutput(bytes, source);
+    verifyOutput(bytes, source);
 
     const savedZip = await JSZip.loadAsync(bytes);
-    const savedDoc = parseXML(await zipText(savedZip, path));
+    const savedDoc = parseXML(await zipText(savedZip, template.path));
 
-    if (
-      topSnapshot(original) !== topSnapshot(savedDoc) ||
-      outsideSnapshot(original, source.rowSet) !==
-      outsideSnapshot(savedDoc, source.rowSet)
-    ) {
-      throw new Error("저장 후 원본 셀 보존 검사에 실패했습니다.");
+    verifyPreservation(template.doc, savedDoc, source.rowSet);
+
+    return { bytes, source, preservedCount };
+  }
+
+  /* 일괄 결과 사이의 새 코드 중복 검사 */
+  function checkBatchDuplicates(source) {
+    for (const item of source.rows) {
+      const key = JSON.stringify([item.product, item.code]);
+      const previous = state.generatedPairs.get(key);
+
+      if (previous) {
+        throw new Error(
+          `A ${item.row}행: 품번코드 ${item.product}, 새 단품코드 ${item.code}가 ` +
+          `"${previous}" 결과와 중복됩니다.\n이 파일은 ZIP에서 제외합니다.`
+        );
+      }
+    }
+  }
+
+  function registerBatchCodes(source, fileName) {
+    for (const item of source.rows) {
+      state.generatedPairs.set(
+        JSON.stringify([item.product, item.code]),
+        fileName
+      );
+    }
+  }
+
+  /* 파일명 및 목록 */
+  function makeOutputName(inputName) {
+    let base = inputName.replace(/\.xlsx$/i, "")
+      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_")
+      .replace(/[. ]+$/g, "");
+
+    base = (base || "결과") + "_업로드용";
+    let name = base + ".xlsx";
+    let number = 2;
+
+    while (state.names.has(name.toLowerCase())) {
+      name = `${base} (${number++}).xlsx`;
     }
 
-    state.result = {
-      blob: new Blob([bytes], {
-        type:
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      }),
-      name: fileA.name.replace(/\.xlsx$/i, "") + "_업로드용.xlsx"
-    };
+    state.names.add(name.toLowerCase());
+    return name;
+  }
+
+  function timestamp() {
+    const date = new Date();
+    const pad = value => String(value).padStart(2, "0");
+
+    return `${date.getFullYear()}${pad(date.getMonth()+1)}${pad(date.getDate())}_` +
+      `${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+  }
+
+  function addResultRow(index, name) {
+    const row = document.createElement("tr");
+    const cells = [];
+
+    for (const value of [index + 1, name, "대기", "-", "-", ""]) {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      row.appendChild(cell);
+      cells.push(cell);
+    }
+
+    $("resultBody").appendChild(row);
+    return cells;
+  }
+
+  function updateResult(cells, result) {
+    cells[2].textContent = result.ok ? "검증 통과" : "실패";
+    cells[2].className = result.ok ? "ok" : "fail";
+    cells[3].textContent = result.ok ? result.count : "-";
+    cells[4].textContent = result.outputName || "-";
+    cells[5].textContent = result.message;
+  }
+
+  function renderTable(id, headings, rows) {
+    const table = document.createElement("table");
+    const head = document.createElement("thead");
+    const body = document.createElement("tbody");
+
+    function makeRow(values, tag) {
+      const row = document.createElement("tr");
+      for (const value of values) {
+        const cell = document.createElement(tag);
+        cell.textContent = value;
+        row.appendChild(cell);
+      }
+      return row;
+    }
+
+    head.appendChild(makeRow(headings, "th"));
+    rows.forEach(row => body.appendChild(makeRow(row, "td")));
+    table.append(head, body);
+    $(id).replaceChildren(table);
+  }
+
+  function showPreview(index) {
+    const preview = state.previews[index];
+    if (!preview) return;
+
+    $("previewInfo").textContent =
+      `${preview.inputName} → ${preview.outputName}\n` +
+      `옵션 ${preview.count}개 / 재고 0: ${preview.zeroCount}개 / ` +
+      `연결상품코드 빈칸: ${preview.blankLinks}개\n` +
+      `최대 100개 표시 · 원본 행 번호 유지`;
 
     renderTable(
       "tableA",
-      ["원본 행", "품번코드", "기존 단품코드", "옵션상세명칭", "가상재고", "연결상품코드"],
-      source.rows.map(item => [
-        item.sourceRow,
-        item.product,
-        item.oldCode,
-        item.original,
-        item.stock,
-        item.link
+      ["원본 행", "품번코드", "기존 단품코드", "옵션상세명칭", "가상재고", "옵션구분", "연결상품코드"],
+      preview.rows.map(item => [
+        item.row, item.product, item.oldCode, item.original,
+        item.stock, item.oldType, item.link
       ])
     );
 
     renderTable(
       "tableB",
       ["출력 행", "품번코드", "새 단품코드", "옵션제목", "옵션상세명칭", "가상재고", "옵션구분", "연결상품코드"],
-      source.rows.map(item => [
-        item.sourceRow,
-        item.product,
-        item.code,
-        CONFIG.title,
-        item.option,
-        item.stock,
-        CONFIG.optionType,
-        item.link
+      preview.rows.map(item => [
+        item.row, item.product, item.code, CFG.title, item.option,
+        item.stock, CFG.optionType, item.link
       ])
     );
-
-    $("infoA").textContent = `${fileA.name} · ${bookA.SheetNames[0]}`;
-    $("infoB").textContent = `${fileB.name} · ${bookB.SheetNames[0]}`;
-
-    const first = source.rows[0];
-    const last = source.rows[source.rows.length - 1];
-
-    showStatus(
-      "검증 통과 — 택1 버전\n" +
-      `옵션제목: ${CONFIG.title}\n` +
-      `A 옵션: ${source.count}개 / B 옵션: ${verifiedCount}개\n` +
-      `원본 행 유지: ${first.sourceRow}행 ~ ${last.sourceRow}행\n` +
-      "중간 빈 행 압축 없음\n" +
-      `새 단품코드: ${first.code} ~ ${last.code}\n` +
-      "E열: 같은 원본 행의 가상재고와 일치\n" +
-      `재고 0인 옵션: ${source.zeroCount}개 — 숫자 0 반영 확인\n` +
-      "L열: 조건에 맞는 행에 숫자 2 입력 확인\n" +
-      "M열: 같은 원본 행의 연결상품코드와 일치\n" +
-      `연결상품코드 빈칸: ${source.blankLinks}개 — 원본대로 유지\n` +
-      "옵션 수·순서·중복 횟수·변환값 일치\n" +
-      "상단 1~3행 및 수정 대상 외 셀 보존 확인\n" +
-      `다운로드 파일명: ${state.result.name}`,
-      "success"
-    );
-  } catch (error) {
-    reset();
-    showStatus(
-      error?.message || "변환 중 알 수 없는 오류가 발생했습니다.",
-      "error"
-    );
-  } finally {
-    setBusy(false);
   }
-}
 
-/* 다운로드 및 화면 이벤트 */
-function download() {
-  if (!state.result || state.busy) return;
+  function buildReport(templateName) {
+    const success = state.results.filter(item => item.ok).length;
 
-  const url = URL.createObjectURL(state.result.blob);
-  const link = document.createElement("a");
+    const lines = [
+      "엑셀 옵션 일괄 변환 결과 — 택1",
+      `생성 시각: ${new Date().toLocaleString("ko-KR")}`,
+      `B양식: ${templateName}`,
+      `옵션제목: ${CFG.title}`,
+      `전체 ${state.results.length}개 / 성공 ${success}개 / 실패 ${state.results.length-success}개`,
+      "행 삭제 없음 / 원본 행 유지 / 원본 재고 복사 / L=2 / M 원본 복사",
+      "검증 통과한 결과만 results 폴더에 포함했습니다.",
+      "실패한 파일은 결과 엑셀에서 제외했습니다.",
+      "외부 업로드 서비스의 수용 여부는 별도 확인이 필요합니다.",
+      ""
+    ];
 
-  link.href = url;
-  link.download = state.result.name;
+    state.results.forEach((item, index) => {
+      lines.push(
+        `[${index+1}] ${item.ok ? "성공" : "실패"}: ${item.inputName}`
+      );
+      if (item.ok) lines.push(`결과: results/${item.outputName}`);
+      lines.push(item.message, "");
+    });
 
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+    return "\uFEFF" + lines.join("\r\n");
+  }
 
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-}
+  /* 일괄 변환 */
+  async function runBatch() {
+    if (state.busy) return;
 
-for (const side of ["A", "B"]) {
-  $("file" + side).addEventListener("change", () => {
-    reset();
+    resetResults();
+    setBusy(true);
 
-    $("info" + side).textContent =
-      $("file" + side).files[0]?.name || "파일을 선택하세요.";
+    try {
+      ensureLibraries();
 
-    showStatus("파일이 변경되었습니다. ‘변환 및 검증’을 눌러주세요.");
+      const files = [...$("filesA").files];
+      const fileB = $("fileB").files[0];
+
+      if (!files.length || !fileB) {
+        throw new Error("A파일 한 개 이상과 B양식을 선택하세요.");
+      }
+
+      showStatus("공통 B양식을 확인하고 있습니다.");
+      await pause();
+
+      const template = await loadTemplate(fileB);
+      const archive = new JSZip();
+      const tableRows = files.map((file, index) =>
+        addResultRow(index, file.name)
+      );
+
+      state.zipName = `옵션변환_택1_${timestamp()}.zip`;
+      $("progress").max = files.length;
+
+      for (let index = 0; index < files.length; index++) {
+        const file = files[index];
+        const cells = tableRows[index];
+        cells[2].textContent = "처리 중";
+
+        showStatus(
+          `[${index+1}/${files.length}] ${file.name}\n변환 및 검증 중입니다.`
+        );
+
+        await pause();
+
+        try {
+          const { bytes, source, preservedCount } =
+            await convertOne(file, template);
+
+          checkBatchDuplicates(source);
+
+          const outputName = makeOutputName(file.name);
+          archive.file("results/" + outputName, bytes);
+          registerBatchCodes(source, file.name);
+
+          const first = source.rows[0];
+          const last = source.rows[source.count - 1];
+
+          const result = {
+            ok: true,
+            inputName: file.name,
+            outputName,
+            count: source.count,
+            message:
+              `옵션 ${source.count}개 · 원본 행 ${first.row}~${last.row} 유지\n` +
+              `새 단품코드 ${first.code}~${last.code}\n` +
+              `재고 0: ${source.zeroCount}개 / 연결상품코드 빈칸: ${source.blankLinks}개\n` +
+              "옵션·재고·L·M·원본 보존 검증 통과" +
+              (preservedCount
+                ? `\n주의: F~K 등 수정 대상 외 기존 값 ${preservedCount}개를 보존했습니다. 별도로 확인하세요.`
+                : "")
+          };
+
+          state.results.push(result);
+          updateResult(cells, result);
+
+          const previewIndex = state.previews.length;
+          state.previews.push({
+            inputName: file.name,
+            outputName,
+            count: source.count,
+            zeroCount: source.zeroCount,
+            blankLinks: source.blankLinks,
+            rows: source.rows.slice(0, 100)
+          });
+
+          if (previewIndex === 0) {
+            $("previewSelect").replaceChildren();
+          }
+
+          $("previewSelect").appendChild(
+            new Option(
+              `${file.name} — ${source.count}개`,
+              String(previewIndex)
+            )
+          );
+        } catch (error) {
+          const result = {
+            ok: false,
+            inputName: file.name,
+            outputName: "",
+            count: 0,
+            message: errorText(error)
+          };
+
+          state.results.push(result);
+          updateResult(cells, result);
+        }
+
+        $("progress").value = index + 1;
+        await pause();
+      }
+
+      archive.file("처리결과.txt", buildReport(fileB.name));
+      state.archive = archive;
+
+      if (state.previews.length) {
+        $("previewSelect").value = "0";
+        showPreview(0);
+      }
+
+      const success = state.results.filter(item => item.ok).length;
+      const failed = files.length - success;
+
+      $("download").textContent = success
+        ? `결과 ZIP 다운로드 — 성공 ${success}개`
+        : "오류 목록 ZIP 다운로드";
+
+      showStatus(
+        `전체 처리 완료\n전체 ${files.length}개 / 성공 ${success}개 / 실패 ${failed}개\n` +
+        (success
+          ? "정상 결과만 ZIP의 results 폴더에 포함됩니다.\n"
+          : "정상 결과가 없습니다. ZIP에는 오류 목록만 포함됩니다.\n") +
+        "실패한 파일과 이유는 처리결과.txt를 확인하세요.",
+        failed ? "warning" : "success"
+      );
+    } catch (error) {
+      state.archive = null;
+      showStatus(errorText(error), "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* ZIP 다운로드 */
+  async function downloadZip() {
+    if (!state.archive || state.busy) return;
+    setBusy(true);
+
+    try {
+      showStatus("ZIP 파일을 만들고 있습니다.");
+
+      const blob = await state.archive.generateAsync(
+        {
+          type: "blob",
+          mimeType: "application/zip",
+          compression: "STORE"
+        },
+        metadata => showStatus(
+          `ZIP 생성 중: ${Math.round(metadata.percent)}%`
+        )
+      );
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = state.zipName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+      const success = state.results.filter(item => item.ok).length;
+      const failed = state.results.length - success;
+
+      showStatus(
+        `다운로드를 요청했습니다.\n${state.zipName}\n` +
+        `성공 ${success}개 / 실패 ${failed}개\n` +
+        "압축을 풀어 처리결과.txt와 결과 엑셀을 확인하세요.",
+        failed ? "warning" : "success"
+      );
+    } catch (error) {
+      showStatus(
+        `ZIP 생성 실패: ${errorText(error)}\n` +
+        "파일이 크거나 많으면 나누어 처리하세요.",
+        "error"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* 화면 이벤트 */
+  $("filesA").addEventListener("change", () => {
+    resetResults();
+
+    const files = [...$("filesA").files];
+    const mb = files.reduce((sum, file) => sum + file.size, 0)
+      / 1024 / 1024;
+
+    $("infoA").textContent = files.length
+      ? `${files.length}개 선택 · 총 ${mb.toFixed(1)} MB`
+      : "파일을 선택하세요.";
+
+    showStatus("A파일이 변경되었습니다. 전체 변환 및 검증을 눌러주세요.");
   });
-}
 
-$("convert").addEventListener("click", convert);
-$("download").addEventListener("click", download);
+  $("fileB").addEventListener("change", () => {
+    resetResults();
+    $("infoB").textContent =
+      $("fileB").files[0]?.name || "B양식을 선택하세요.";
+
+    showStatus("B양식이 변경되었습니다. 전체 변환 및 검증을 눌러주세요.");
+  });
+
+  $("previewSelect").addEventListener("change", event => {
+    if (event.target.value !== "") {
+      showPreview(Number(event.target.value));
+    }
+  });
+
+  $("convert").addEventListener("click", runBatch);
+  $("download").addEventListener("click", downloadZip);
+
+  try {
+    ensureLibraries();
+    showStatus("준비 완료 — 택1 일괄 변환. A파일 여러 개와 B양식을 선택하세요.");
+  } catch (error) {
+    showStatus(errorText(error), "error");
+  }
+})();
 </script>
 </body>
 </html>
